@@ -1,0 +1,17 @@
+# Issue Forge Configuration
+# Documentation: https://github.com/your-repo/issue-forge
+
+global:
+  # Seconds to wait when no issues are found
+  polling_interval: 600
+
+  # AI provider to use: claude or gemini
+  ai_provider: claude
+
+  # Maximum retry attempts before escalating
+  max_iterations: 3
+
+projects:
+  # Add your project paths here
+  # - path: "/path/to/your/project"
+  # - path: "/path/to/another/project"

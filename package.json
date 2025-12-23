@@ -1,0 +1,41 @@
+{
+  "name": "issue-forge",
+  "version": "1.0.0",
+  "description": "Automated GitHub issue processing with multi-agent AI collaboration",
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "main": "src/index.js",
+  "bin": {
+    "issue-forge": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dayjs": "^1.11.13",
+    "execa": "^9.5.1",
+    "ora": "^8.1.1",
+    "winston": "^3.17.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0"
+  },
+  "keywords": [
+    "github",
+    "ai",
+    "automation",
+    "claude",
+    "gemini",
+    "multi-agent"
+  ],
+  "author": "",
+  "license": "MIT"
+}
