@@ -44,14 +44,14 @@ export class GitHubClient {
 
   parseGitHubUrl(url) {
     const patterns = [
-      /github\.com[:/]([^/]+)\/([^/.]+)/,
-      /github\.com\/([^/]+)\/([^/.]+)/,
+      /github\.com[:/]([^/]+)\/(.+?)(?:\.git)?$/,
+      /github\.com\/([^/]+)\/(.+?)(?:\.git)?$/,
     ];
 
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match) {
-        return { owner: match[1], repo: match[2].replace('.git', '') };
+        return { owner: match[1], repo: match[2] };
       }
     }
 

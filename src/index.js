@@ -29,13 +29,21 @@ program
 
       const orchestrator = new Orchestrator(config);
 
+      let forceExit = false;
       process.on('SIGINT', () => {
-        console.log('\n');
+        if (forceExit) {
+          console.log('\nForce exit');
+          process.exit(1);
+        }
+        console.log('\nStopping... (Ctrl+C again to force exit)');
+        forceExit = true;
         orchestrator.stop();
+        setTimeout(() => process.exit(0), 3000);
       });
 
       process.on('SIGTERM', () => {
         orchestrator.stop();
+        setTimeout(() => process.exit(0), 3000);
       });
 
       await orchestrator.start();
