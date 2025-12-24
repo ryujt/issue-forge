@@ -9,7 +9,7 @@ export const DEFAULT_CONFIG = {
 
 export const AI_MODELS = {
   claude: {
-    model: 'opus',
+    model: 'sonnet',
     context: 200000,
     command: 'claude',
   },

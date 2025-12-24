@@ -22,11 +22,7 @@ export class IssueProcessor {
 
     logger.info(`Processing issue #${issue.number}: ${issue.title}`);
 
-    try {
-      await github.createBranch(branchName);
-    } catch (error) {
-      logger.warn(`Branch may already exist: ${error.message}`);
-    }
+    await github.createBranch(branchName);
 
     let result = null;
     let iteration = 0;

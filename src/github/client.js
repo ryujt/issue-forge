@@ -2,17 +2,32 @@ import { Octokit } from '@octokit/rest';
 import { executeCommand } from '../utils/process.js';
 import { logger } from '../utils/logger.js';
 
+async function getGitHubToken() {
+  if (process.env.GITHUB_TOKEN) {
+    return process.env.GITHUB_TOKEN;
+  }
+
+  try {
+    const result = await executeCommand('gh', ['auth', 'token']);
+    return result.stdout.trim();
+  } catch (error) {
+    logger.warn('Failed to get token from gh CLI. Run "gh auth login" first.');
+    return null;
+  }
+}
+
 export class GitHubClient {
   constructor(projectPath) {
     this.projectPath = projectPath;
-    this.octokit = new Octokit({
-      auth: process.env.GITHUB_TOKEN,
-    });
+    this.octokit = null;
     this.owner = null;
     this.repo = null;
   }
 
   async initialize() {
+    const token = await getGitHubToken();
+    this.octokit = new Octokit({ auth: token });
+
     const remote = await this.getRemoteUrl();
     const parsed = this.parseGitHubUrl(remote);
     this.owner = parsed.owner;
@@ -73,23 +88,38 @@ export class GitHubClient {
   }
 
   async createBranch(branchName, baseBranch = 'main') {
-    const { data: ref } = await this.octokit.git.getRef({
-      owner: this.owner,
-      repo: this.repo,
-      ref: `heads/${baseBranch}`,
-    });
-
-    await this.octokit.git.createRef({
-      owner: this.owner,
-      repo: this.repo,
-      ref: `refs/heads/${branchName}`,
-      sha: ref.object.sha,
-    });
-
     await executeCommand('git', ['fetch', 'origin'], { cwd: this.projectPath });
-    await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
 
-    logger.info(`Created and checked out branch: ${branchName}`);
+    try {
+      await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
+      logger.info(`Checked out existing branch: ${branchName}`);
+      return;
+    } catch (error) {
+      // Branch doesn't exist locally, try to create it
+    }
+
+    try {
+      const { data: ref } = await this.octokit.git.getRef({
+        owner: this.owner,
+        repo: this.repo,
+        ref: `heads/${baseBranch}`,
+      });
+
+      await this.octokit.git.createRef({
+        owner: this.owner,
+        repo: this.repo,
+        ref: `refs/heads/${branchName}`,
+        sha: ref.object.sha,
+      });
+
+      await executeCommand('git', ['fetch', 'origin'], { cwd: this.projectPath });
+      await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
+      logger.info(`Created and checked out branch: ${branchName}`);
+    } catch (error) {
+      // Branch might exist remotely, try checking out from remote
+      await executeCommand('git', ['checkout', '-b', branchName, `origin/${branchName}`], { cwd: this.projectPath });
+      logger.info(`Checked out remote branch: ${branchName}`);
+    }
   }
 
   async commitAndPush(message) {

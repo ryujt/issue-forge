@@ -36,26 +36,32 @@ function isRateLimited(output) {
 }
 
 export async function executeCommand(command, args, options = {}) {
-  const { cwd, timeout = 600000 } = options;
+  const { cwd, timeout = 1800000 } = options;
 
-  logger.debug(`Executing: ${command} ${args.join(' ')}`);
+  logger.debug(`Executing: ${command} ${args.join(' ').slice(0, 100)}...`);
 
   try {
     const result = await execa(command, args, {
       cwd,
       timeout,
       reject: false,
+      buffer: true,
+      maxBuffer: 1024 * 1024 * 50,
     });
 
     const output = result.stdout + result.stderr;
+
+    if (result.timedOut) {
+      throw new Error(`Command timed out after ${timeout / 1000}s`);
+    }
 
     if (isRateLimited(output)) {
       const retryAfter = extractRetryAfter(output);
       throw new RateLimitError(`Rate limit hit for ${command}`, retryAfter);
     }
 
-    if (result.exitCode !== 0) {
-      throw new Error(`Command failed with exit code ${result.exitCode}: ${output}`);
+    if (result.exitCode !== 0 && result.exitCode !== null) {
+      throw new Error(`Command failed with exit code ${result.exitCode}: ${output.slice(0, 500)}`);
     }
 
     return {
