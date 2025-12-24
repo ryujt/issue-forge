@@ -86,15 +86,36 @@ export class Orchestrator {
   async processNextIssue(projectPath, state) {
     const issues = await state.github.fetchOpenIssues();
 
-    const unprocessedIssue = issues.find(
-      issue => !state.processedIssues.has(issue.number)
-    );
+    let unprocessedIssue = null;
+
+    for (const issue of issues) {
+      if (state.processedIssues.has(issue.number)) {
+        continue;
+      }
+
+      const labels = issue.labels?.map(l => l.name) || [];
+      if (labels.includes('issue-forge:needs-human')) {
+        logger.debug(`Issue #${issue.number} needs human intervention, skipping`);
+        state.processedIssues.add(issue.number);
+        continue;
+      }
+
+      const prCheck = await state.github.hasExistingPR(issue.number);
+      if (prCheck.exists) {
+        logger.debug(`Issue #${issue.number} already has PR #${prCheck.pr.number}, skipping`);
+        state.processedIssues.add(issue.number);
+        continue;
+      }
+
+      unprocessedIssue = issue;
+      break;
+    }
 
     if (!unprocessedIssue) {
       return false;
     }
 
-    logger.info(`Found issue #${unprocessedIssue.number} in ${projectPath}`);
+    logger.info(`Processing issue #${unprocessedIssue.number}: ${unprocessedIssue.title}`);
 
     try {
       const result = await this.processor.process(projectPath, unprocessedIssue);

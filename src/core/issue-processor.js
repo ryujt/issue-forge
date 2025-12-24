@@ -22,6 +22,7 @@ export class IssueProcessor {
 
     logger.info(`Processing issue #${issue.number}: ${issue.title}`);
 
+    await github.addLabel(issue.number, 'issue-forge:in-progress');
     await github.createBranch(branchName);
 
     let result = null;
@@ -129,6 +130,7 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
 
     await github.commitAndPush(`fix: resolve issue #${issue.number}`);
     const pr = await github.createPullRequest(title, body, branchName);
+    await github.removeLabel(issue.number, 'issue-forge:in-progress');
 
     await memory.addFinalSummary({
       iterations: memory.currentIteration,
@@ -154,6 +156,8 @@ Please review the agent collaboration log in \`.issue-forge/issue-${issue.number
 *Automated by Issue Forge*`;
 
     await github.addIssueComment(issue.number, comment);
+    await github.removeLabel(issue.number, 'issue-forge:in-progress');
+    await github.addLabel(issue.number, 'issue-forge:needs-human');
 
     await memory.addFinalSummary({
       iterations: memory.currentIteration,

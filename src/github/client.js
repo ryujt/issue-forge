@@ -71,6 +71,65 @@ export class GitHubClient {
     return issues.filter(issue => !issue.pull_request);
   }
 
+  async hasExistingPR(issueNumber) {
+    const branchName = `issue-forge/issue-${issueNumber}`;
+
+    const { data: prs } = await this.octokit.pulls.list({
+      owner: this.owner,
+      repo: this.repo,
+      state: 'open',
+      head: `${this.owner}:${branchName}`,
+    });
+
+    if (prs.length > 0) {
+      return { exists: true, pr: prs[0] };
+    }
+
+    const { data: allPrs } = await this.octokit.pulls.list({
+      owner: this.owner,
+      repo: this.repo,
+      state: 'open',
+      per_page: 100,
+    });
+
+    const linkedPR = allPrs.find(pr =>
+      pr.title.includes(`#${issueNumber}`) ||
+      pr.body?.includes(`#${issueNumber}`)
+    );
+
+    if (linkedPR) {
+      return { exists: true, pr: linkedPR };
+    }
+
+    return { exists: false };
+  }
+
+  async addLabel(issueNumber, label) {
+    try {
+      await this.octokit.issues.addLabels({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        labels: [label],
+      });
+    } catch (error) {
+      logger.debug(`Failed to add label: ${error.message}`);
+    }
+  }
+
+  async removeLabel(issueNumber, label) {
+    try {
+      await this.octokit.issues.removeLabel({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        name: label,
+      });
+    } catch (error) {
+      logger.debug(`Failed to remove label: ${error.message}`);
+    }
+  }
+
   async getIssue(issueNumber) {
     const { data: issue } = await this.octokit.issues.get({
       owner: this.owner,
