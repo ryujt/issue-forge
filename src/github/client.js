@@ -44,8 +44,8 @@ export class GitHubClient {
 
   parseGitHubUrl(url) {
     const patterns = [
-      /github\.com[:/]([^/]+)\/(.+?)(?:\.git)?$/,
-      /github\.com\/([^/]+)\/(.+?)(?:\.git)?$/,
+      /github\.com(?:-[^:]+)?[:/]([^/]+)\/(.+?)(?:\.git)?$/,
+      /github\.com(?:-[^/]+)?\/([^/]+)\/(.+?)(?:\.git)?$/,
     ];
 
     for (const pattern of patterns) {
