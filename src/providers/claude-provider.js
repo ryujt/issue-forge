@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider.js';
-import { RateLimitError } from '../utils/process.js';
+import { RateLimitError, TimeoutError, sleep } from '../utils/process.js';
 import { logger } from '../utils/logger.js';
 import { execa } from 'execa';
 
@@ -8,13 +8,65 @@ export class ClaudeProvider extends BaseProvider {
     super(config);
     this.model = config.model || 'sonnet';
     this.maxTokens = config.maxTokens || 64000;
+    this.maxRetries = config.maxRetries || 3;
+    this.retryDelay = config.retryDelay || 30000;
   }
 
   async execute(prompt, options = {}) {
+    const model = options.model || this.model;
+    const maxRetries = options.maxRetries || this.maxRetries;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await this.executeOnce(prompt, { ...options, model, attempt });
+        return result;
+      } catch (error) {
+        lastError = error;
+
+        if (error instanceof RateLimitError) {
+          throw error;
+        }
+
+        if (error instanceof TimeoutError && attempt < maxRetries) {
+          const delay = this.retryDelay * attempt;
+          logger.warn(`Timeout on attempt ${attempt}/${maxRetries}. Retrying in ${delay / 1000}s...`);
+          await sleep(delay);
+          continue;
+        }
+
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          const delay = this.retryDelay * attempt;
+          logger.warn(`Error on attempt ${attempt}/${maxRetries}: ${error.message}. Retrying in ${delay / 1000}s...`);
+          await sleep(delay);
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    throw lastError;
+  }
+
+  isRetryableError(error) {
+    const retryablePatterns = [
+      /timed out/i,
+      /timeout/i,
+      /ECONNRESET/i,
+      /ETIMEDOUT/i,
+      /network/i,
+      /socket hang up/i,
+    ];
+    return retryablePatterns.some(pattern => pattern.test(error.message));
+  }
+
+  async executeOnce(prompt, options = {}) {
     const startTime = Date.now();
     const model = options.model || this.model;
+    const attempt = options.attempt || 1;
 
-    logger.info(`Claude executing with model: ${model}`);
+    logger.info(`Claude executing with model: ${model} (attempt ${attempt})`);
     logger.info(`Working directory: ${options.cwd}`);
 
     const args = [
@@ -39,7 +91,7 @@ export class ClaudeProvider extends BaseProvider {
       const duration = Math.round((Date.now() - startTime) / 1000);
 
       if (result.timedOut) {
-        throw new Error(`Claude timed out after ${duration}s`);
+        throw new TimeoutError(`Claude timed out after ${duration}s`, duration);
       }
 
       if (result.exitCode !== 0) {
@@ -59,7 +111,7 @@ export class ClaudeProvider extends BaseProvider {
         provider: 'claude',
       };
     } catch (error) {
-      if (error instanceof RateLimitError) {
+      if (error instanceof RateLimitError || error instanceof TimeoutError) {
         throw error;
       }
       logger.error(`Claude execution failed: ${error.message}`);

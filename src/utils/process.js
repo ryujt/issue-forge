@@ -21,6 +21,14 @@ export class RateLimitError extends Error {
   }
 }
 
+export class TimeoutError extends Error {
+  constructor(message, duration) {
+    super(message);
+    this.name = 'TimeoutError';
+    this.duration = duration;
+  }
+}
+
 function extractRetryAfter(output) {
   for (const pattern of RETRY_AFTER_PATTERNS) {
     const match = output.match(pattern);
