@@ -50,8 +50,11 @@ export class Orchestrator {
   }
 
   async runLoop() {
+    const errorRetryInterval = 30; // Retry after 30s when errors occur
+
     while (this.running) {
       let hasProcessedAny = false;
+      let hasErrors = false;
 
       for (const project of this.config.projects) {
         if (!this.running) break;
@@ -70,13 +73,21 @@ export class Orchestrator {
             hasProcessedAny = true;
           } else {
             logger.error(`Error processing project ${project.path}: ${error.message}`);
+            hasErrors = true;
+            // Continue to next project
           }
         }
       }
 
       if (!hasProcessedAny) {
-        logger.info(`No issues to process. Waiting ${this.config.global.polling_interval}s...`);
-        await sleep(this.config.global.polling_interval * 1000);
+        if (hasErrors) {
+          // If there were errors, retry sooner
+          logger.info(`Errors occurred. Retrying in ${errorRetryInterval}s...`);
+          await sleep(errorRetryInterval * 1000);
+        } else {
+          logger.info(`No issues to process. Waiting ${this.config.global.polling_interval}s...`);
+          await sleep(this.config.global.polling_interval * 1000);
+        }
       }
     }
 

@@ -149,6 +149,9 @@ export class GitHubClient {
   async createBranch(branchName, baseBranch = 'main') {
     await executeCommand('git', ['fetch', 'origin'], { cwd: this.projectPath });
 
+    // Clean up any uncommitted changes before switching branches
+    await this.cleanWorkingDirectory();
+
     try {
       await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
       logger.info(`Checked out existing branch: ${branchName}`);
@@ -178,6 +181,34 @@ export class GitHubClient {
       // Branch might exist remotely, try checking out from remote
       await executeCommand('git', ['checkout', '-b', branchName, `origin/${branchName}`], { cwd: this.projectPath });
       logger.info(`Checked out remote branch: ${branchName}`);
+    }
+  }
+
+  async cleanWorkingDirectory() {
+    try {
+      // First, try to checkout main branch
+      await executeCommand('git', ['checkout', 'main'], { cwd: this.projectPath });
+    } catch (error) {
+      // If checkout fails due to uncommitted changes, stash them first
+      if (error.message.includes('overwritten') || error.message.includes('uncommitted')) {
+        logger.debug('Stashing uncommitted changes before branch switch');
+        await executeCommand('git', ['stash', '--include-untracked'], { cwd: this.projectPath });
+        await executeCommand('git', ['checkout', 'main'], { cwd: this.projectPath });
+        // Drop the stash since we don't need these changes
+        try {
+          await executeCommand('git', ['stash', 'drop'], { cwd: this.projectPath });
+        } catch (e) {
+          // Ignore if stash is empty
+        }
+      }
+    }
+
+    // Reset to clean state
+    try {
+      await executeCommand('git', ['reset', '--hard', 'HEAD'], { cwd: this.projectPath });
+      await executeCommand('git', ['clean', '-fd'], { cwd: this.projectPath });
+    } catch (error) {
+      logger.debug(`Clean working directory warning: ${error.message}`);
     }
   }
 
@@ -241,7 +272,11 @@ export class GitHubClient {
   }
 
   async cleanupBranch(branchName) {
-    await executeCommand('git', ['checkout', 'main'], { cwd: this.projectPath });
-    await executeCommand('git', ['branch', '-D', branchName], { cwd: this.projectPath });
+    await this.cleanWorkingDirectory();
+    try {
+      await executeCommand('git', ['branch', '-D', branchName], { cwd: this.projectPath });
+    } catch (error) {
+      logger.debug(`Failed to delete branch ${branchName}: ${error.message}`);
+    }
   }
 }
