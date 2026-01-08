@@ -1,0 +1,9 @@
+# Issue Forge Configuration
+
+global:
+  polling_interval: 600  # Seconds to wait when no issues
+  ai_provider: claude    # claude or gemini
+
+projects:
+  - path: "/Users/ryu/projects/lib/ryulib-cpp"
+  - path: "/Users/ryu/projects/lib/ryulib-cpp-plus"
