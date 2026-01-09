@@ -14,9 +14,6 @@ export class IssueProcessor {
     const github = new GitHubClient(projectPath);
     await github.initialize();
 
-    const memory = new MemoryFile(projectPath, issue.number);
-    await memory.initialize(issue);
-
     const agents = createAgents(this.provider);
     const branchName = `issue-forge/issue-${issue.number}`;
 
@@ -24,6 +21,9 @@ export class IssueProcessor {
 
     await github.addLabel(issue.number, 'issue-forge:in-progress');
     await github.createBranch(branchName);
+
+    const memory = new MemoryFile(projectPath, issue.number);
+    await memory.initialize(issue);
 
     let result = null;
     let iteration = 0;
