@@ -3,7 +3,18 @@
 global:
   polling_interval: 600  # Seconds to wait when no issues
   ai_provider: claude    # claude or gemini
+  max_iterations: 3      # Max retry attempts per issue
+
+# Logging Configuration
+# Can also be set via environment variables:
+#   LOG_LEVEL=debug
+#   LOG_TO_FILE=true
+#   LOG_DIR=logs
+logging:
+  level: debug           # debug, info, warn, error
+  file_enabled: true     # Enable file logging
+  file_path: ./logs      # Log file directory
+  max_files: 7           # Keep last N log files
 
 projects:
-  - path: "/Users/ryu/projects/lib/ryulib-cpp"
-  - path: "/Users/ryu/projects/lib/ryulib-cpp-plus"
+  - path: "/path/to/your/project"

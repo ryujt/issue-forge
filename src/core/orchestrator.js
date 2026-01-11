@@ -99,9 +99,23 @@ export class Orchestrator {
 
     let unprocessedIssue = null;
 
+    const RETRY_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown for failed issues
+
     for (const issue of issues) {
       if (state.processedIssues.has(issue.number)) {
         continue;
+      }
+
+      // Check if issue is in cooldown after failure
+      if (state.failedIssues?.has(issue.number)) {
+        const failedAt = state.failedIssues.get(issue.number);
+        if (Date.now() - failedAt < RETRY_COOLDOWN) {
+          logger.debug(`Issue #${issue.number} in cooldown, skipping`);
+          continue;
+        }
+        // Cooldown expired, remove from failed list
+        state.failedIssues.delete(issue.number);
+        logger.info(`Issue #${issue.number} cooldown expired, retrying...`);
       }
 
       const labels = issue.labels?.map(l => l.name) || [];
@@ -143,7 +157,19 @@ export class Orchestrator {
       return true;
     } catch (error) {
       logger.error(`Failed to process issue #${unprocessedIssue.number}: ${error.message}`);
-      state.processedIssues.add(unprocessedIssue.number);
+
+      // Clean up in-progress label on error
+      try {
+        await state.github.removeLabel(unprocessedIssue.number, 'issue-forge:in-progress');
+      } catch (labelError) {
+        logger.debug(`Failed to remove in-progress label: ${labelError.message}`);
+      }
+
+      // Don't add to processedIssues - allow retry on next loop
+      // Instead, add a temporary cooldown
+      if (!state.failedIssues) state.failedIssues = new Map();
+      state.failedIssues.set(unprocessedIssue.number, Date.now());
+
       return true;
     }
   }

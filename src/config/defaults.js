@@ -4,6 +4,12 @@ export const DEFAULT_CONFIG = {
     ai_provider: 'claude',
     max_iterations: 3,
   },
+  logging: {
+    level: 'debug',
+    file_enabled: false,
+    file_path: './logs',
+    max_files: 7,
+  },
   projects: [],
 };
 

@@ -22,6 +22,19 @@ export async function findConfigFile(startDir = process.cwd()) {
   return null;
 }
 
+function getLoggingConfig(userConfig) {
+  const envLevel = process.env.LOG_LEVEL?.toLowerCase();
+  const envFileEnabled = process.env.LOG_TO_FILE?.toLowerCase() === 'true';
+  const envFilePath = process.env.LOG_DIR;
+
+  return {
+    level: envLevel || userConfig?.logging?.level || DEFAULT_CONFIG.logging.level,
+    file_enabled: envFileEnabled || userConfig?.logging?.file_enabled || DEFAULT_CONFIG.logging.file_enabled,
+    file_path: envFilePath || userConfig?.logging?.file_path || DEFAULT_CONFIG.logging.file_path,
+    max_files: userConfig?.logging?.max_files || DEFAULT_CONFIG.logging.max_files,
+  };
+}
+
 export async function loadConfig(configPath) {
   const filePath = configPath || await findConfigFile();
 
@@ -37,6 +50,7 @@ export async function loadConfig(configPath) {
       ...DEFAULT_CONFIG.global,
       ...userConfig.global,
     },
+    logging: getLoggingConfig(userConfig),
     projects: userConfig.projects || [],
   };
 

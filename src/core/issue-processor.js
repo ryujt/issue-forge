@@ -29,39 +29,46 @@ export class IssueProcessor {
     let iteration = 0;
     let previousFailure = null;
 
-    while (iteration < this.maxIterations) {
-      iteration = memory.startNewIteration();
-      logger.info(`Starting iteration ${iteration}/${this.maxIterations}`);
+    try {
+      while (iteration < this.maxIterations) {
+        iteration = memory.startNewIteration();
+        logger.info(`Starting iteration ${iteration}/${this.maxIterations}`);
 
-      try {
-        result = await this.runIteration({
-          agents,
-          issue,
-          memory,
-          projectPath,
-          isRetry: iteration > 1,
-          previousFailure,
-        });
+        try {
+          result = await this.runIteration({
+            agents,
+            issue,
+            memory,
+            projectPath,
+            isRetry: iteration > 1,
+            previousFailure,
+          });
 
-        if (result.approved) {
-          logger.info(`Iteration ${iteration} approved!`);
-          break;
+          if (result.approved) {
+            logger.info(`Iteration ${iteration} approved!`);
+            break;
+          }
+
+          previousFailure = {
+            reason: result.reasons?.join(', ') || 'Unknown',
+            feedback: result.feedback || [],
+          };
+
+          logger.warn(`Iteration ${iteration} rejected. Retrying...`);
+        } catch (error) {
+          if (error instanceof RateLimitError) {
+            await waitForRateLimit(error.retryAfter);
+            iteration--;
+            continue;
+          }
+          throw error;
         }
-
-        previousFailure = {
-          reason: result.reasons?.join(', ') || 'Unknown',
-          feedback: result.feedback || [],
-        };
-
-        logger.warn(`Iteration ${iteration} rejected. Retrying...`);
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          await waitForRateLimit(error.retryAfter);
-          iteration--;
-          continue;
-        }
-        throw error;
       }
+    } catch (error) {
+      // Clean up on unexpected error
+      logger.error(`Unexpected error during processing: ${error.message}`);
+      await github.removeLabel(issue.number, 'issue-forge:in-progress');
+      throw error;
     }
 
     if (result?.approved) {

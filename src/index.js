@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { loadConfig, findConfigFile } from './config/loader.js';
 import { Orchestrator } from './core/orchestrator.js';
-import { logger } from './utils/logger.js';
+import { logger, configureLogging } from './utils/logger.js';
 import { writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
@@ -26,6 +26,8 @@ program
     try {
       const { config, configPath } = await loadConfig(options.config);
       spinner.succeed(`Loaded config from ${configPath}`);
+
+      configureLogging(config.logging);
 
       const orchestrator = new Orchestrator(config);
 
@@ -107,6 +109,8 @@ program
     try {
       const { config } = await loadConfig(options.config);
       spinner.succeed('Configuration loaded');
+
+      configureLogging(config.logging);
 
       const { IssueProcessor } = await import('./core/issue-processor.js');
       const { createProvider } = await import('./providers/index.js');
