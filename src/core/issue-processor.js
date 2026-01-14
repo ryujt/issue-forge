@@ -37,6 +37,16 @@ export class IssueProcessor {
         iteration = memory.startNewIteration();
         logger.info(`Starting iteration ${iteration}/${this.maxIterations}`);
 
+        if (this.notificationService) {
+          await this.notificationService.notifyIssueStart({
+            issueNumber: issue.number,
+            issueTitle: issue.title,
+            projectPath,
+            iteration,
+            maxIterations: this.maxIterations,
+          });
+        }
+
         try {
           result = await this.runIteration({
             agents,

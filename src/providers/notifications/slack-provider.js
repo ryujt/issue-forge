@@ -145,4 +145,53 @@ export class SlackProvider extends NotificationProvider {
       }],
     };
   }
+
+  async sendIssueStart(message) {
+    try {
+      const payload = this.formatIssueStart(message);
+
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}: ${await response.text()}`);
+      }
+    } catch (error) {
+      logger.error(`Failed to send Slack issue start notification: ${error.message}`);
+    }
+  }
+
+  formatIssueStart(message) {
+    const { issueNumber, issueTitle, projectPath, iteration, maxIterations } = message;
+
+    return {
+      attachments: [{
+        color: '#3498db',
+        title: ':rocket: Issue Processing Started',
+        fields: [
+          {
+            title: 'Issue',
+            value: `#${issueNumber}: ${issueTitle}`,
+            short: false,
+          },
+          {
+            title: 'Project',
+            value: projectPath,
+            short: true,
+          },
+          {
+            title: 'Iteration',
+            value: `${iteration}/${maxIterations}`,
+            short: true,
+          },
+        ],
+      }],
+    };
+  }
 }

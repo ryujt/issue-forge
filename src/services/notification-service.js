@@ -56,4 +56,16 @@ export class NotificationService {
       logger.error(`Notification service error for agent ${message.agentName}: ${error.message}`);
     }
   }
+
+  async notifyIssueStart(message) {
+    if (!this.config?.enabled || !this.provider) {
+      return;
+    }
+
+    try {
+      await this.provider.sendIssueStart(message);
+    } catch (error) {
+      logger.error(`Notification service error for issue start #${message.issueNumber}: ${error.message}`);
+    }
+  }
 }

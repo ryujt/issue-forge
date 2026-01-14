@@ -7,6 +7,10 @@ export class NotificationProvider {
     throw new Error('sendAgentResponse() must be implemented by subclass');
   }
 
+  sendIssueStart(message) {
+    throw new Error('sendIssueStart() must be implemented by subclass');
+  }
+
   getName() {
     throw new Error('getName() must be implemented by subclass');
   }

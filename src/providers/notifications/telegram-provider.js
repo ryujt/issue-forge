@@ -105,4 +105,41 @@ export class TelegramProvider extends NotificationProvider {
 *Action:* ${action}
 *Duration:* ${duration}s${preview}`;
   }
+
+  async sendIssueStart(message) {
+    try {
+      const text = this.formatIssueStart(message);
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          text,
+          parse_mode: 'Markdown',
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Telegram API returned ${response.status}: ${await response.text()}`);
+      }
+
+      logger.debug(`Telegram issue start notification sent for issue #${message.issueNumber}`);
+    } catch (error) {
+      logger.error(`Failed to send Telegram issue start notification: ${error.message}`);
+    }
+  }
+
+  formatIssueStart(message) {
+    const { issueNumber, issueTitle, projectPath, iteration, maxIterations } = message;
+
+    return `🚀 *Issue Processing Started*
+
+*Issue:* #${issueNumber}: ${issueTitle}
+*Project:* \`${projectPath}\`
+*Iteration:* ${iteration}/${maxIterations}`;
+  }
 }
