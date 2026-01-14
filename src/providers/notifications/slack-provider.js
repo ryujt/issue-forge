@@ -194,4 +194,61 @@ export class SlackProvider extends NotificationProvider {
       }],
     };
   }
+
+  async sendScheduled(message) {
+    try {
+      const payload = this.formatScheduled(message);
+
+      const response = await fetch(this.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Slack API returned ${response.status}: ${await response.text()}`);
+      }
+    } catch (error) {
+      logger.error(`Failed to send Slack scheduled notification: ${error.message}`);
+    }
+  }
+
+  formatScheduled(message) {
+    const { issueNumber, issueTitle, targetTime } = message;
+    const timeStr = targetTime.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return {
+      attachments: [{
+        color: '#f39c12',
+        title: ':alarm_clock: Issue Scheduled',
+        fields: [
+          {
+            title: 'Issue',
+            value: `#${issueNumber}: ${issueTitle}`,
+            short: false,
+          },
+          {
+            title: 'Scheduled Time',
+            value: timeStr,
+            short: true,
+          },
+          {
+            title: 'Status',
+            value: 'Waiting to execute',
+            short: true,
+          },
+        ],
+      }],
+    };
+  }
 }

@@ -4,6 +4,7 @@ import { createProvider } from '../providers/index.js';
 import { NotificationService } from '../services/notification-service.js';
 import { logger } from '../utils/logger.js';
 import { sleep, RateLimitError, waitForRateLimit } from '../utils/process.js';
+import { TimeScheduler } from '../utils/time-scheduler.js';
 
 export class Orchestrator {
   constructor(config) {
@@ -102,21 +103,19 @@ export class Orchestrator {
 
     let unprocessedIssue = null;
 
-    const RETRY_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown for failed issues
+    const RETRY_COOLDOWN = 5 * 60 * 1000;
 
     for (const issue of issues) {
       if (state.processedIssues.has(issue.number)) {
         continue;
       }
 
-      // Check if issue is in cooldown after failure
       if (state.failedIssues?.has(issue.number)) {
         const failedAt = state.failedIssues.get(issue.number);
         if (Date.now() - failedAt < RETRY_COOLDOWN) {
           logger.debug(`Issue #${issue.number} in cooldown, skipping`);
           continue;
         }
-        // Cooldown expired, remove from failed list
         state.failedIssues.delete(issue.number);
         logger.info(`Issue #${issue.number} cooldown expired, retrying...`);
       }
@@ -143,6 +142,23 @@ export class Orchestrator {
       return false;
     }
 
+    const scheduleInfo = TimeScheduler.getWaitMilliseconds(unprocessedIssue.title);
+    if (scheduleInfo) {
+      const { waitMs, targetTime } = scheduleInfo;
+
+      logger.info(`Issue #${unprocessedIssue.number} scheduled for ${targetTime.toLocaleString()}`);
+
+      if (this.notificationService) {
+        await this.notificationService.notifyScheduled({
+          issueNumber: unprocessedIssue.number,
+          issueTitle: unprocessedIssue.title,
+          targetTime,
+        });
+      }
+
+      await sleep(waitMs);
+    }
+
     logger.info(`Processing issue #${unprocessedIssue.number}: ${unprocessedIssue.title}`);
 
     try {
@@ -161,15 +177,12 @@ export class Orchestrator {
     } catch (error) {
       logger.error(`Failed to process issue #${unprocessedIssue.number}: ${error.message}`);
 
-      // Clean up in-progress label on error
       try {
         await state.github.removeLabel(unprocessedIssue.number, 'issue-forge:in-progress');
       } catch (labelError) {
         logger.debug(`Failed to remove in-progress label: ${labelError.message}`);
       }
 
-      // Don't add to processedIssues - allow retry on next loop
-      // Instead, add a temporary cooldown
       if (!state.failedIssues) state.failedIssues = new Map();
       state.failedIssues.set(unprocessedIssue.number, Date.now());
 

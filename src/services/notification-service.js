@@ -68,4 +68,25 @@ export class NotificationService {
       logger.error(`Notification service error for issue start #${message.issueNumber}: ${error.message}`);
     }
   }
+
+  async notifyScheduled(message) {
+    if (!this.config?.enabled || !this.provider) {
+      return;
+    }
+
+    try {
+      if (this.provider.sendScheduled) {
+        await this.provider.sendScheduled(message);
+      } else {
+        await this.provider.send({
+          issueNumber: message.issueNumber,
+          issueTitle: message.issueTitle,
+          status: 'scheduled',
+          targetTime: message.targetTime,
+        });
+      }
+    } catch (error) {
+      logger.error(`Notification service error for scheduled issue #${message.issueNumber}: ${error.message}`);
+    }
+  }
 }

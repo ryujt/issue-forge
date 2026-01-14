@@ -142,4 +142,49 @@ export class TelegramProvider extends NotificationProvider {
 *Project:* \`${projectPath}\`
 *Iteration:* ${iteration}/${maxIterations}`;
   }
+
+  async sendScheduled(message) {
+    try {
+      const text = this.formatScheduled(message);
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          text,
+          parse_mode: 'Markdown',
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Telegram API returned ${response.status}: ${await response.text()}`);
+      }
+
+      logger.debug(`Telegram scheduled notification sent for issue #${message.issueNumber}`);
+    } catch (error) {
+      logger.error(`Failed to send Telegram scheduled notification: ${error.message}`);
+    }
+  }
+
+  formatScheduled(message) {
+    const { issueNumber, issueTitle, targetTime } = message;
+    const timeStr = targetTime.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `⏰ *Issue Scheduled*
+
+*Issue:* #${issueNumber}: ${issueTitle}
+*Scheduled Time:* ${timeStr}
+*Status:* Waiting to execute`;
+  }
 }
