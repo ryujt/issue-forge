@@ -24,6 +24,7 @@ logging:
 notifications:
   enabled: false
   provider: none         # Options: slack, telegram, none
+  sendAllResponses: true # Send notification for every AI agent response (default: true)
 
   # Slack configuration:
   # webhookUrl: "https://hooks.slack.com/services/..."

@@ -30,6 +30,8 @@ export class StrategistAgent extends BaseAgent {
       content: result.output,
     });
 
+    await this.notifyResponse(context, result, action);
+
     this.logger.info(`${action} completed in ${result.duration}s`);
 
     return {

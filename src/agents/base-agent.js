@@ -8,6 +8,7 @@ export class BaseAgent {
     this.provider = provider;
     this.logger = createAgentLogger(name);
     this.templateDir = options.templateDir || join(process.cwd(), 'templates', 'prompts');
+    this.notificationService = options.notificationService;
   }
 
   async loadTemplate(templateName) {
@@ -35,5 +36,23 @@ export class BaseAgent {
 
   parseResponse(output) {
     return { raw: output };
+  }
+
+  async notifyResponse(context, result, action) {
+    if (!this.notificationService) {
+      return;
+    }
+
+    const { issue } = context;
+    const outputPreview = result.output?.slice(0, 500);
+
+    await this.notificationService.notifyAgentResponse({
+      agentName: this.name,
+      action,
+      issueNumber: issue.number,
+      issueTitle: issue.title,
+      duration: result.duration,
+      outputPreview,
+    });
   }
 }

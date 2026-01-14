@@ -16,6 +16,7 @@ export const DEFAULT_CONFIG = {
     webhookUrl: undefined,
     botToken: undefined,
     chatId: undefined,
+    sendAllResponses: true,
   },
   projects: [],
 };

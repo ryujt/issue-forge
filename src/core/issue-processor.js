@@ -15,7 +15,9 @@ export class IssueProcessor {
     const github = new GitHubClient(projectPath);
     await github.initialize();
 
-    const agents = createAgents(this.provider);
+    const agents = createAgents(this.provider, {
+      notificationService: this.notificationService,
+    });
     const branchName = `issue-forge/issue-${issue.number}`;
 
     logger.info(`Processing issue #${issue.number}: ${issue.title}`);

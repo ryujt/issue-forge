@@ -24,6 +24,8 @@ export class CoderAgent extends BaseAgent {
       content: result.output,
     });
 
+    await this.notifyResponse(context, result, 'Implement');
+
     this.logger.info(`Implementation completed in ${result.duration}s`);
 
     return {

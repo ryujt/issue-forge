@@ -57,4 +57,52 @@ export class TelegramProvider extends NotificationProvider {
 *Action Required:* Manual review needed`;
     }
   }
+
+  async sendAgentResponse(message) {
+    try {
+      const text = this.formatAgentResponse(message);
+
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: this.chatId,
+          text,
+          parse_mode: 'Markdown',
+        }),
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Telegram API returned ${response.status}: ${await response.text()}`);
+      }
+
+      logger.debug(`Telegram agent response sent for ${message.agentName}`);
+    } catch (error) {
+      logger.error(`Failed to send Telegram agent response: ${error.message}`);
+    }
+  }
+
+  formatAgentResponse(message) {
+    const { agentName, action, issueNumber, issueTitle, duration, outputPreview } = message;
+
+    const agentEmoji = {
+      Strategist: '🎯',
+      Architect: '🏗️',
+      Coder: '💻',
+      Tester: '🧪',
+      Reviewer: '📝',
+    };
+
+    const emoji = agentEmoji[agentName] || '🤖';
+    const preview = outputPreview ? `\n\n\`\`\`\n${outputPreview}\n\`\`\`` : '';
+
+    return `${emoji} *${agentName} Agent*
+
+*Issue:* #${issueNumber}: ${issueTitle}
+*Action:* ${action}
+*Duration:* ${duration}s${preview}`;
+  }
 }
