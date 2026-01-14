@@ -24,6 +24,8 @@ export class ReviewerAgent extends BaseAgent {
       content: result.output,
     });
 
+    await this.notifyResponse(context, result, 'Evaluate');
+
     if (parsed.decision) {
       await memory.addDecision(
         parsed.decision,

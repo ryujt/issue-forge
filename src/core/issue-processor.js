@@ -8,13 +8,16 @@ export class IssueProcessor {
   constructor(provider, options = {}) {
     this.provider = provider;
     this.maxIterations = options.maxIterations || 3;
+    this.notificationService = options.notificationService;
   }
 
   async process(projectPath, issue) {
     const github = new GitHubClient(projectPath);
     await github.initialize();
 
-    const agents = createAgents(this.provider);
+    const agents = createAgents(this.provider, {
+      notificationService: this.notificationService,
+    });
     const branchName = `issue-forge/issue-${issue.number}`;
 
     logger.info(`Processing issue #${issue.number}: ${issue.title}`);
@@ -33,6 +36,16 @@ export class IssueProcessor {
       while (iteration < this.maxIterations) {
         iteration = memory.startNewIteration();
         logger.info(`Starting iteration ${iteration}/${this.maxIterations}`);
+
+        if (this.notificationService) {
+          await this.notificationService.notifyIssueStart({
+            issueNumber: issue.number,
+            issueTitle: issue.title,
+            projectPath,
+            iteration,
+            maxIterations: this.maxIterations,
+          });
+        }
 
         try {
           result = await this.runIteration({
@@ -144,6 +157,16 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
       result: 'APPROVED - PR Created',
     });
 
+    if (this.notificationService) {
+      await this.notificationService.notifyAnalysisComplete({
+        issueNumber: issue.number,
+        issueTitle: issue.title,
+        status: 'success',
+        prNumber: pr.number,
+        prUrl: pr.html_url,
+      });
+    }
+
     return {
       status: 'success',
       issue: issue.number,
@@ -170,6 +193,15 @@ Please review the agent collaboration log in \`.issue-forge/issue-${issue.number
       iterations: memory.currentIteration,
       result: 'ESCALATED - Human intervention required',
     });
+
+    if (this.notificationService) {
+      await this.notificationService.notifyAnalysisComplete({
+        issueNumber: issue.number,
+        issueTitle: issue.title,
+        status: 'escalated',
+        iterationCount: memory.currentIteration,
+      });
+    }
 
     logger.warn(`Issue #${issue.number} escalated after ${this.maxIterations} failed attempts`);
   }

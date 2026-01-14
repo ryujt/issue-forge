@@ -24,6 +24,8 @@ export class ArchitectAgent extends BaseAgent {
       content: result.output,
     });
 
+    await this.notifyResponse(context, result, 'Design');
+
     this.logger.info(`Design completed in ${result.duration}s`);
 
     return {

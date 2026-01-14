@@ -114,11 +114,16 @@ program
 
       const { IssueProcessor } = await import('./core/issue-processor.js');
       const { createProvider } = await import('./providers/index.js');
+      const { NotificationService } = await import('./services/notification-service.js');
       const { GitHubClient } = await import('./github/client.js');
 
       const projectPath = options.project || config.projects[0].path;
       const provider = createProvider(config.global.ai_provider);
-      const processor = new IssueProcessor(provider);
+      const notificationService = new NotificationService(config.notifications);
+      const processor = new IssueProcessor(provider, {
+        maxIterations: config.global.max_iterations || 3,
+        notificationService,
+      });
 
       const github = new GitHubClient(projectPath);
       await github.initialize();

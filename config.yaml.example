@@ -16,5 +16,22 @@ logging:
   file_path: ./logs      # Log file directory
   max_files: 7           # Keep last N log files
 
+# Notification Configuration
+# Can also be set via environment variables:
+#   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+#   TELEGRAM_BOT_TOKEN=your_bot_token
+#   TELEGRAM_CHAT_ID=your_chat_id
+notifications:
+  enabled: false
+  provider: none         # Options: slack, telegram, none
+  sendAllResponses: true # Send notification for every AI agent response (default: true)
+
+  # Slack configuration:
+  # webhookUrl: "https://hooks.slack.com/services/..."
+
+  # Telegram configuration:
+  # botToken: "your_bot_token"  # Get from @BotFather
+  # chatId: "your_chat_id"      # Get by: 1) Message your bot, 2) curl https://api.telegram.org/bot<TOKEN>/getUpdates
+
 projects:
   - path: "/path/to/your/project"

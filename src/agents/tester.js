@@ -24,6 +24,8 @@ export class TesterAgent extends BaseAgent {
       content: result.output,
     });
 
+    await this.notifyResponse(context, result, 'Test');
+
     this.logger.info(`Testing completed in ${result.duration}s`);
 
     return {

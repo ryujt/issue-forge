@@ -5,12 +5,17 @@ import { TesterAgent } from './tester.js';
 import { ReviewerAgent } from './reviewer.js';
 
 export function createAgents(provider, options = {}) {
+  const agentOptions = {
+    ...options,
+    notificationService: options.notificationService,
+  };
+
   return {
-    strategist: new StrategistAgent(provider, options),
-    architect: new ArchitectAgent(provider, options),
-    coder: new CoderAgent(provider, options),
-    tester: new TesterAgent(provider, options),
-    reviewer: new ReviewerAgent(provider, options),
+    strategist: new StrategistAgent(provider, agentOptions),
+    architect: new ArchitectAgent(provider, agentOptions),
+    coder: new CoderAgent(provider, agentOptions),
+    tester: new TesterAgent(provider, agentOptions),
+    reviewer: new ReviewerAgent(provider, agentOptions),
   };
 }
 
