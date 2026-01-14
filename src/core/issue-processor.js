@@ -8,6 +8,7 @@ export class IssueProcessor {
   constructor(provider, options = {}) {
     this.provider = provider;
     this.maxIterations = options.maxIterations || 3;
+    this.notificationService = options.notificationService;
   }
 
   async process(projectPath, issue) {
@@ -144,6 +145,16 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
       result: 'APPROVED - PR Created',
     });
 
+    if (this.notificationService) {
+      await this.notificationService.notifyAnalysisComplete({
+        issueNumber: issue.number,
+        issueTitle: issue.title,
+        status: 'success',
+        prNumber: pr.number,
+        prUrl: pr.html_url,
+      });
+    }
+
     return {
       status: 'success',
       issue: issue.number,
@@ -170,6 +181,15 @@ Please review the agent collaboration log in \`.issue-forge/issue-${issue.number
       iterations: memory.currentIteration,
       result: 'ESCALATED - Human intervention required',
     });
+
+    if (this.notificationService) {
+      await this.notificationService.notifyAnalysisComplete({
+        issueNumber: issue.number,
+        issueTitle: issue.title,
+        status: 'escalated',
+        iterationCount: memory.currentIteration,
+      });
+    }
 
     logger.warn(`Issue #${issue.number} escalated after ${this.maxIterations} failed attempts`);
   }

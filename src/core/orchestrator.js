@@ -1,6 +1,7 @@
 import { GitHubClient } from '../github/client.js';
 import { IssueProcessor } from './issue-processor.js';
 import { createProvider } from '../providers/index.js';
+import { NotificationService } from '../services/notification-service.js';
 import { logger } from '../utils/logger.js';
 import { sleep, RateLimitError, waitForRateLimit } from '../utils/process.js';
 
@@ -8,8 +9,10 @@ export class Orchestrator {
   constructor(config) {
     this.config = config;
     this.provider = createProvider(config.global.ai_provider);
+    this.notificationService = new NotificationService(config.notifications);
     this.processor = new IssueProcessor(this.provider, {
       maxIterations: config.global.max_iterations || 3,
+      notificationService: this.notificationService,
     });
     this.running = false;
     this.projectStates = new Map();

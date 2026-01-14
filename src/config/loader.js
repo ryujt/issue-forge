@@ -35,6 +35,14 @@ function getLoggingConfig(userConfig) {
   };
 }
 
+function getNotificationConfig(userConfig) {
+  return {
+    enabled: userConfig?.notifications?.enabled ?? DEFAULT_CONFIG.notifications.enabled,
+    provider: userConfig?.notifications?.provider || DEFAULT_CONFIG.notifications.provider,
+    webhookUrl: userConfig?.notifications?.webhookUrl,
+  };
+}
+
 export async function loadConfig(configPath) {
   const filePath = configPath || await findConfigFile();
 
@@ -51,6 +59,7 @@ export async function loadConfig(configPath) {
       ...userConfig.global,
     },
     logging: getLoggingConfig(userConfig),
+    notifications: getNotificationConfig(userConfig),
     projects: userConfig.projects || [],
   };
 
@@ -77,5 +86,29 @@ function validateConfig(config) {
   const validProviders = ['claude', 'gemini'];
   if (!validProviders.includes(config.global.ai_provider)) {
     throw new Error(`Invalid ai_provider. Must be one of: ${validProviders.join(', ')}`);
+  }
+
+  if (config.notifications?.enabled) {
+    const validNotificationProviders = ['slack', 'telegram', 'none'];
+    if (!validNotificationProviders.includes(config.notifications.provider)) {
+      throw new Error(`Invalid notification provider. Must be one of: ${validNotificationProviders.join(', ')}`);
+    }
+
+    if (config.notifications.provider !== 'none') {
+      const envVarMap = {
+        slack: 'SLACK_WEBHOOK_URL',
+        telegram: 'TELEGRAM_WEBHOOK_URL',
+      };
+      const envVar = envVarMap[config.notifications.provider];
+      const hasEnvUrl = envVar && process.env[envVar];
+      const hasConfigUrl = config.notifications.webhookUrl;
+
+      if (!hasEnvUrl && !hasConfigUrl) {
+        throw new Error(
+          `Notifications enabled but no webhook URL found. ` +
+          `Set ${envVar} environment variable or add webhookUrl to notifications config.`
+        );
+      }
+    }
   }
 }

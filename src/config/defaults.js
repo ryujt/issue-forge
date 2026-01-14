@@ -10,6 +10,11 @@ export const DEFAULT_CONFIG = {
     file_path: './logs',
     max_files: 7,
   },
+  notifications: {
+    enabled: false,
+    provider: 'none',
+    webhookUrl: undefined,
+  },
   projects: [],
 };
 

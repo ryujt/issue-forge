@@ -71,9 +71,99 @@ global:
   polling_interval: 600  # 이슈 없을 때 대기 시간 (초)
   ai_provider: claude    # claude 또는 gemini
 
+logging:
+  level: debug
+  file_enabled: true
+  file_path: ./logs
+  max_files: 7
+
+notifications:
+  enabled: false
+  provider: slack  # Options: slack, telegram, none
+  # webhookUrl: "https://hooks.slack.com/services/..."  # Optional: Can use env var instead
+
 projects:
   - path: "/Users/ryu/projects/project-a"
   - path: "/Users/ryu/projects/project-b"
+```
+
+## 알림 설정
+
+Issue Forge는 이슈 처리 완료 시 Slack 또는 Telegram으로 알림을 보낼 수 있습니다.
+
+### Slack 설정
+
+1. Slack Workspace에서 Incoming Webhook 생성:
+   - https://api.slack.com/messaging/webhooks 접속
+   - "Create your Slack app" 클릭
+   - Incoming Webhooks 활성화
+   - "Add New Webhook to Workspace" 클릭
+   - 알림을 받을 채널 선택
+   - Webhook URL 복사
+
+2. config.yaml에 추가:
+```yaml
+notifications:
+  enabled: true
+  provider: slack
+  webhookUrl: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+```
+
+또는 환경변수로 설정:
+```bash
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+```
+
+### Telegram 설정
+
+1. Telegram Bot 생성:
+   - @BotFather에게 `/newbot` 명령 전송
+   - Bot 이름 및 username 설정
+   - Bot Token 복사
+
+2. Chat ID 확인:
+   - 생성한 Bot과 대화 시작 (메시지 전송)
+   - https://api.telegram.org/bot{YOUR_BOT_TOKEN}/getUpdates 접속
+   - `chat.id` 값 확인
+
+3. Webhook URL 형식으로 설정:
+```yaml
+notifications:
+  enabled: true
+  provider: telegram
+  webhookUrl: "https://api.telegram.org/bot{YOUR_BOT_TOKEN}/sendMessage?chat_id={YOUR_CHAT_ID}"
+```
+
+또는 환경변수로 설정:
+```bash
+export TELEGRAM_WEBHOOK_URL="https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}"
+```
+
+### 알림 메시지
+
+**성공 시 (PR 생성)**:
+- 이슈 번호 및 제목
+- PR 번호 및 링크
+
+**에스컬레이션 시 (3회 실패)**:
+- 이슈 번호 및 제목
+- 반복 횟수
+- 수동 검토 필요 안내
+
+### 문제 해결
+
+알림이 전송되지 않는 경우:
+1. Webhook URL이 올바른지 확인
+2. 로그 파일에서 에러 메시지 확인: `./logs/issue-forge-*.log`
+3. curl로 테스트:
+```bash
+# Slack
+curl -X POST -H 'Content-type: application/json' \
+  --data '{"text":"Test message"}' \
+  YOUR_SLACK_WEBHOOK_URL
+
+# Telegram
+curl "https://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Test"
 ```
 
 ## 사용법
