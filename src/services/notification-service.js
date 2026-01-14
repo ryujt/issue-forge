@@ -7,26 +7,30 @@ export class NotificationService {
     this.provider = null;
 
     if (config?.enabled) {
-      const webhookUrl = this.getWebhookUrl(config.provider);
-      if (webhookUrl) {
-        this.provider = createNotificationProvider(config.provider, webhookUrl);
+      const providerConfig = this.getProviderConfig(config.provider);
+      try {
+        this.provider = createNotificationProvider(config.provider, providerConfig);
         logger.info(`Notification provider initialized: ${config.provider}`);
-      } else {
-        logger.warn(`Notifications enabled but no webhook URL found for ${config.provider}`);
+      } catch (error) {
+        logger.warn(`Failed to initialize ${config.provider} provider: ${error.message}`);
       }
     }
   }
 
-  getWebhookUrl(providerType) {
-    const envVarMap = {
-      slack: 'SLACK_WEBHOOK_URL',
-      telegram: 'TELEGRAM_WEBHOOK_URL',
-    };
-
-    const envVar = envVarMap[providerType];
-    const envUrl = envVar ? process.env[envVar] : null;
-
-    return envUrl || this.config?.webhookUrl;
+  getProviderConfig(providerType) {
+    switch (providerType) {
+      case 'slack':
+        return {
+          webhookUrl: process.env.SLACK_WEBHOOK_URL || this.config?.webhookUrl,
+        };
+      case 'telegram':
+        return {
+          botToken: process.env.TELEGRAM_BOT_TOKEN || this.config?.botToken,
+          chatId: process.env.TELEGRAM_CHAT_ID || this.config?.chatId,
+        };
+      default:
+        return {};
+    }
   }
 
   async notifyAnalysisComplete(message) {

@@ -5,16 +5,18 @@ export { NotificationProvider } from './notification-provider.js';
 export { SlackProvider } from './slack-provider.js';
 export { TelegramProvider } from './telegram-provider.js';
 
-export function createNotificationProvider(type, webhookUrl) {
-  if (!webhookUrl) {
-    throw new Error(`Webhook URL is required for ${type} provider`);
-  }
-
+export function createNotificationProvider(type, config) {
   switch (type) {
     case 'slack':
-      return new SlackProvider(webhookUrl);
+      if (!config.webhookUrl) {
+        throw new Error('Webhook URL is required for Slack provider');
+      }
+      return new SlackProvider(config.webhookUrl);
     case 'telegram':
-      return new TelegramProvider(webhookUrl);
+      if (!config.botToken || !config.chatId) {
+        throw new Error('Bot token and chat ID are required for Telegram provider');
+      }
+      return new TelegramProvider(config);
     case 'none':
       return null;
     default:

@@ -2,9 +2,11 @@ import { NotificationProvider } from './notification-provider.js';
 import { logger } from '../../utils/logger.js';
 
 export class TelegramProvider extends NotificationProvider {
-  constructor(webhookUrl) {
+  constructor(config) {
     super();
-    this.webhookUrl = webhookUrl;
+    this.botToken = config.botToken;
+    this.chatId = config.chatId;
+    this.apiUrl = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
   }
 
   getName() {
@@ -15,12 +17,13 @@ export class TelegramProvider extends NotificationProvider {
     try {
       const text = this.formatMessage(message);
 
-      const response = await fetch(this.webhookUrl, {
+      const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          chat_id: this.chatId,
           text,
           parse_mode: 'Markdown',
         }),
@@ -30,6 +33,8 @@ export class TelegramProvider extends NotificationProvider {
       if (!response.ok) {
         throw new Error(`Telegram API returned ${response.status}: ${await response.text()}`);
       }
+
+      logger.debug(`Telegram notification sent for issue #${message.issueNumber}`);
     } catch (error) {
       logger.error(`Failed to send Telegram notification for issue #${message.issueNumber}: ${error.message}`);
     }
