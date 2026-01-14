@@ -40,6 +40,9 @@ function getNotificationConfig(userConfig) {
     enabled: userConfig?.notifications?.enabled ?? DEFAULT_CONFIG.notifications.enabled,
     provider: userConfig?.notifications?.provider || DEFAULT_CONFIG.notifications.provider,
     webhookUrl: userConfig?.notifications?.webhookUrl,
+    botToken: userConfig?.notifications?.botToken,
+    chatId: userConfig?.notifications?.chatId,
+    sendAllResponses: userConfig?.notifications?.sendAllResponses ?? DEFAULT_CONFIG.notifications.sendAllResponses,
   };
 }
 
@@ -94,19 +97,26 @@ function validateConfig(config) {
       throw new Error(`Invalid notification provider. Must be one of: ${validNotificationProviders.join(', ')}`);
     }
 
-    if (config.notifications.provider !== 'none') {
-      const envVarMap = {
-        slack: 'SLACK_WEBHOOK_URL',
-        telegram: 'TELEGRAM_WEBHOOK_URL',
-      };
-      const envVar = envVarMap[config.notifications.provider];
-      const hasEnvUrl = envVar && process.env[envVar];
+    if (config.notifications.provider === 'slack') {
+      const hasEnvUrl = process.env.SLACK_WEBHOOK_URL;
       const hasConfigUrl = config.notifications.webhookUrl;
 
       if (!hasEnvUrl && !hasConfigUrl) {
         throw new Error(
-          `Notifications enabled but no webhook URL found. ` +
-          `Set ${envVar} environment variable or add webhookUrl to notifications config.`
+          `Slack notifications enabled but no webhook URL found. ` +
+          `Set SLACK_WEBHOOK_URL environment variable or add webhookUrl to notifications config.`
+        );
+      }
+    }
+
+    if (config.notifications.provider === 'telegram') {
+      const hasBotToken = process.env.TELEGRAM_BOT_TOKEN || config.notifications.botToken;
+      const hasChatId = process.env.TELEGRAM_CHAT_ID || config.notifications.chatId;
+
+      if (!hasBotToken || !hasChatId) {
+        throw new Error(
+          `Telegram notifications enabled but missing configuration. ` +
+          `Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables or add botToken and chatId to notifications config.`
         );
       }
     }
