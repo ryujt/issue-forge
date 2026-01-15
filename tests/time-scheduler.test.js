@@ -48,8 +48,8 @@ describe('TimeScheduler', () => {
   });
 
   describe('calculateTargetTime', () => {
-    it('should schedule AM time for next day if within 1 hour', () => {
-      const now = new Date('2024-01-15T11:00:00');
+    it('should schedule for next day if more than 1 hour has passed', () => {
+      const now = new Date('2024-01-15T11:00:00'); // 2 hours after 9 AM
       const target = TimeScheduler.calculateTargetTime(9, 'AM', now);
 
       assert.strictEqual(target.getDate(), 16);
@@ -57,7 +57,7 @@ describe('TimeScheduler', () => {
       assert.strictEqual(target.getMinutes(), 0);
     });
 
-    it('should schedule AM time for same day if more than 1 hour away', () => {
+    it('should schedule AM time for same day if not passed', () => {
       const now = new Date('2024-01-15T07:30:00');
       const target = TimeScheduler.calculateTargetTime(9, 'AM', now);
 
@@ -73,8 +73,16 @@ describe('TimeScheduler', () => {
       assert.strictEqual(target.getHours(), 19);
     });
 
-    it('should schedule PM time for next day if already passed', () => {
-      const now = new Date('2024-01-15T20:00:00');
+    it('should return same day target if within 1 hour after target time', () => {
+      const now = new Date('2024-01-15T19:30:00'); // 30 min after 7 PM
+      const target = TimeScheduler.calculateTargetTime(7, 'PM', now);
+
+      assert.strictEqual(target.getDate(), 15);
+      assert.strictEqual(target.getHours(), 19);
+    });
+
+    it('should schedule for next day if more than 1 hour after target time', () => {
+      const now = new Date('2024-01-15T20:30:00'); // 1.5 hours after 7 PM
       const target = TimeScheduler.calculateTargetTime(7, 'PM', now);
 
       assert.strictEqual(target.getDate(), 16);

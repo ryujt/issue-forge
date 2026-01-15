@@ -36,16 +36,11 @@ export class TimeScheduler {
     const target = new Date(now);
     target.setHours(targetHour, 0, 0, 0);
 
-    if (period === 'AM') {
-      const oneHourBefore = new Date(target);
-      oneHourBefore.setHours(oneHourBefore.getHours() - 1);
+    const diffMs = now.getTime() - target.getTime();
+    const oneHourMs = 60 * 60 * 1000;
 
-      if (now >= oneHourBefore) {
-        target.setDate(target.getDate() + 1);
-      }
-    }
-
-    if (target <= now) {
+    // If more than 1 hour has passed, schedule for next day
+    if (diffMs > oneHourMs) {
       target.setDate(target.getDate() + 1);
     }
 

@@ -37,21 +37,21 @@ describe('Scheduling End-to-End Flow', () => {
       assert.ok(notificationData.targetTime instanceof Date, 'Should have Date object');
     });
 
-    it('should process issue with AM9 next-day scheduling', async () => {
+    it('should schedule for next day when more than 1 hour has passed', async () => {
       const issueTitle = 'AM9 Run database backup';
 
-      // Current time: 11 PM (within 1 hour of AM9 tomorrow)
+      // Current time: 11 PM (more than 1 hour after AM9)
       const now = new Date('2024-01-15T23:00:00');
 
       // Step 1: Parse and calculate
       const parsed = TimeScheduler.parseTimeFromTitle(issueTitle);
       const targetTime = TimeScheduler.calculateTargetTime(parsed.hour, parsed.period, now);
 
-      // Should schedule for next day
-      assert.strictEqual(targetTime.getDate(), 16, 'Should schedule for next day');
+      // Should schedule for next day since more than 1 hour has passed
+      assert.strictEqual(targetTime.getDate(), 16, 'Should be next day');
       assert.strictEqual(targetTime.getHours(), 9, 'Should be 9 AM');
 
-      // Step 2: Verify wait time
+      // Step 2: Verify wait time is positive (scheduled for next day)
       const waitMs = targetTime.getTime() - now.getTime();
       assert.ok(waitMs > 0, 'Should have positive wait time');
       assert.ok(waitMs >= 10 * 60 * 60 * 1000, 'Should wait at least 10 hours');
@@ -96,8 +96,8 @@ describe('Scheduling End-to-End Flow', () => {
       const targetTime = TimeScheduler.calculateTargetTime(parsed.hour, parsed.period, now);
       assert.strictEqual(targetTime.getHours(), 0, 'Should be midnight (hour 0)');
 
-      // Should be next day since current time is PM
-      assert.ok(targetTime.getDate() === 16, 'Should be next day');
+      // More than 1 hour has passed since midnight, so schedule for next day
+      assert.strictEqual(targetTime.getDate(), 16, 'Should be next day');
     });
 
     it('should handle noon deployment (PM12)', async () => {
@@ -126,34 +126,47 @@ describe('Scheduling End-to-End Flow', () => {
       assert.strictEqual(targetTime.getDate(), 15, 'Should be same day');
     });
 
-    it('should handle scheduling just after target time', async () => {
-      const issueTitle = 'PM7 Already passed deployment';
+    it('should execute immediately when within 1 hour after target time', async () => {
+      const issueTitle = 'PM7 Just passed deployment';
       const now = new Date('2024-01-15T19:05:00'); // 7:05 PM, 5 minutes after 7 PM
 
       const parsed = TimeScheduler.parseTimeFromTitle(issueTitle);
       const targetTime = TimeScheduler.calculateTargetTime(parsed.hour, parsed.period, now);
       const waitMs = targetTime.getTime() - now.getTime();
 
-      // Should schedule for next day since target time has passed
+      // Within 1 hour, so same day (immediate execution)
+      assert.ok(waitMs < 0, 'Should have negative wait time (time passed)');
+      assert.strictEqual(targetTime.getDate(), 15, 'Should be same day');
+      assert.strictEqual(targetTime.getHours(), 19, 'Should be 7 PM');
+    });
+
+    it('should schedule for next day when more than 1 hour after target time', async () => {
+      const issueTitle = 'PM7 Long passed deployment';
+      const now = new Date('2024-01-15T20:30:00'); // 8:30 PM, 1.5 hours after 7 PM
+
+      const parsed = TimeScheduler.parseTimeFromTitle(issueTitle);
+      const targetTime = TimeScheduler.calculateTargetTime(parsed.hour, parsed.period, now);
+      const waitMs = targetTime.getTime() - now.getTime();
+
+      // More than 1 hour passed, so schedule for next day
       assert.ok(waitMs > 0, 'Should have positive wait time');
       assert.strictEqual(targetTime.getDate(), 16, 'Should be next day');
       assert.strictEqual(targetTime.getHours(), 19, 'Should be 7 PM');
-
-      // Should wait approximately 23 hours 55 minutes
-      const expectedWaitMs = (23 * 60 + 55) * 60 * 1000;
-      assert.strictEqual(waitMs, expectedWaitMs, 'Should wait until 7 PM next day');
     });
 
     it('should handle early morning AM scheduling', async () => {
       const issueTitle = 'AM6 Early morning backup';
       const now = new Date('2024-01-15T03:00:00'); // 3 AM
 
-      const scheduleInfo = TimeScheduler.getWaitMilliseconds(issueTitle);
+      // Use calculateTargetTime directly with mock time
+      const parsed = TimeScheduler.parseTimeFromTitle(issueTitle);
+      const targetTime = TimeScheduler.calculateTargetTime(parsed.hour, parsed.period, now);
+      const waitMs = targetTime.getTime() - now.getTime();
 
-      assert.notStrictEqual(scheduleInfo, null, 'Should schedule');
-      assert.ok(scheduleInfo.waitMs > 0, 'Should have positive wait time');
-      assert.ok(scheduleInfo.waitMs >= 3 * 60 * 60 * 1000, 'Should wait at least 3 hours');
-      assert.strictEqual(scheduleInfo.targetTime.getHours(), 6, 'Should be 6 AM');
+      assert.ok(waitMs > 0, 'Should have positive wait time');
+      assert.strictEqual(waitMs, 3 * 60 * 60 * 1000, 'Should wait exactly 3 hours');
+      assert.strictEqual(targetTime.getHours(), 6, 'Should be 6 AM');
+      assert.strictEqual(targetTime.getDate(), 15, 'Should be same day');
     });
   });
 
