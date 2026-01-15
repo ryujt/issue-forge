@@ -71,6 +71,7 @@ program
 global:
   polling_interval: 600  # Seconds to wait when no issues
   ai_provider: claude    # claude or gemini
+  model: opus            # opus (4.5), sonnet (4), or haiku (3.5)
 
 projects:
   - path: "${process.cwd()}"
@@ -118,7 +119,9 @@ program
       const { GitHubClient } = await import('./github/client.js');
 
       const projectPath = options.project || config.projects[0].path;
-      const provider = createProvider(config.global.ai_provider);
+      const provider = createProvider(config.global.ai_provider, {
+        model: config.global.model,
+      });
       const notificationService = new NotificationService(config.notifications);
       const processor = new IssueProcessor(provider, {
         maxIterations: config.global.max_iterations || 3,

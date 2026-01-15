@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { DEFAULT_CONFIG } from './defaults.js';
+import { DEFAULT_CONFIG, VALID_CLAUDE_MODELS } from './defaults.js';
 
 const CONFIG_NAMES = ['config.yaml', 'config.yml', '.issue-forge.yaml', '.issue-forge.yml'];
 
@@ -60,6 +60,7 @@ export async function loadConfig(configPath) {
     global: {
       ...DEFAULT_CONFIG.global,
       ...userConfig.global,
+      model: userConfig.global?.model || DEFAULT_CONFIG.global.model,
     },
     logging: getLoggingConfig(userConfig),
     notifications: getNotificationConfig(userConfig),
@@ -89,6 +90,12 @@ function validateConfig(config) {
   const validProviders = ['claude', 'gemini'];
   if (!validProviders.includes(config.global.ai_provider)) {
     throw new Error(`Invalid ai_provider. Must be one of: ${validProviders.join(', ')}`);
+  }
+
+  if (config.global.ai_provider === 'claude') {
+    if (!VALID_CLAUDE_MODELS.includes(config.global.model)) {
+      throw new Error(`Invalid model. Must be one of: ${VALID_CLAUDE_MODELS.join(', ')}`);
+    }
   }
 
   if (config.notifications?.enabled) {

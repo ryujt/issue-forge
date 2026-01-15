@@ -3,6 +3,7 @@
 global:
   polling_interval: 600  # Seconds to wait when no issues
   ai_provider: claude    # claude or gemini
+  model: opus            # opus (4.5), sonnet (4), or haiku (3.5)
   max_iterations: 3      # Max retry attempts per issue
 
 # Logging Configuration

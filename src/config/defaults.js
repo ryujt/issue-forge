@@ -1,7 +1,10 @@
+export const VALID_CLAUDE_MODELS = ['opus', 'sonnet', 'haiku'];
+
 export const DEFAULT_CONFIG = {
   global: {
     polling_interval: 600,
     ai_provider: 'claude',
+    model: 'opus',
     max_iterations: 3,
   },
   logging: {
@@ -23,7 +26,7 @@ export const DEFAULT_CONFIG = {
 
 export const AI_MODELS = {
   claude: {
-    model: 'sonnet',
+    model: 'opus',
     context: 200000,
     command: 'claude',
   },

@@ -9,7 +9,9 @@ import { TimeScheduler } from '../utils/time-scheduler.js';
 export class Orchestrator {
   constructor(config) {
     this.config = config;
-    this.provider = createProvider(config.global.ai_provider);
+    this.provider = createProvider(config.global.ai_provider, {
+      model: config.global.model,
+    });
     this.notificationService = new NotificationService(config.notifications);
     this.processor = new IssueProcessor(this.provider, {
       maxIterations: config.global.max_iterations || 3,
@@ -23,7 +25,7 @@ export class Orchestrator {
     this.running = true;
     logger.info('Issue Forge started');
     logger.info(`Monitoring ${this.config.projects.length} project(s)`);
-    logger.info(`AI Provider: ${this.config.global.ai_provider}`);
+    logger.info(`AI Provider: ${this.config.global.ai_provider} (model: ${this.config.global.model})`);
 
     await this.initializeProjects();
     await this.runLoop();

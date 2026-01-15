@@ -8,6 +8,9 @@ global:
   # AI provider to use: claude or gemini
   ai_provider: claude
 
+  # Claude model to use: opus (4.5), sonnet (4), or haiku (3.5)
+  model: opus
+
   # Maximum retry attempts before escalating
   max_iterations: 3
 
