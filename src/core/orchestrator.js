@@ -103,9 +103,11 @@ export class Orchestrator {
   async processNextIssue(projectPath, state) {
     const issues = await state.github.fetchOpenIssues();
 
-    let unprocessedIssue = null;
-
     const RETRY_COOLDOWN = 5 * 60 * 1000;
+
+    let immediateIssue = null;
+    let scheduledIssue = null;
+    let scheduledIssueInfo = null;
 
     for (const issue of issues) {
       if (state.processedIssues.has(issue.number)) {
@@ -136,19 +138,28 @@ export class Orchestrator {
         continue;
       }
 
-      unprocessedIssue = issue;
-      break;
+      const scheduleInfo = TimeScheduler.getWaitMilliseconds(issue.title);
+
+      if (!scheduleInfo) {
+        immediateIssue = issue;
+        break;
+      }
+
+      if (scheduleInfo.waitMs <= 0 && !scheduledIssue) {
+        scheduledIssue = issue;
+        scheduledIssueInfo = scheduleInfo;
+      }
     }
+
+    const unprocessedIssue = immediateIssue || scheduledIssue;
 
     if (!unprocessedIssue) {
       return false;
     }
 
-    const scheduleInfo = TimeScheduler.getWaitMilliseconds(unprocessedIssue.title);
-    if (scheduleInfo) {
-      const { waitMs, targetTime } = scheduleInfo;
-
-      logger.info(`Issue #${unprocessedIssue.number} scheduled for ${targetTime.toLocaleString()}`);
+    if (scheduledIssueInfo && unprocessedIssue === scheduledIssue) {
+      const { targetTime } = scheduledIssueInfo;
+      logger.info(`Issue #${unprocessedIssue.number} scheduled time reached: ${targetTime.toLocaleString()}`);
 
       if (this.notificationService) {
         await this.notificationService.notifyScheduled({
@@ -157,8 +168,6 @@ export class Orchestrator {
           targetTime,
         });
       }
-
-      await sleep(waitMs);
     }
 
     logger.info(`Processing issue #${unprocessedIssue.number}: ${unprocessedIssue.title}`);
