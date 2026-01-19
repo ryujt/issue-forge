@@ -84,8 +84,36 @@ notifications:
 
 projects:
   - path: "/Users/ryu/projects/project-a"
+    base_branch: develop  # 이슈 브랜치 생성 및 PR 타겟 브랜치 (기본값: main)
   - path: "/Users/ryu/projects/project-b"
+    # base_branch 생략 시 main 브랜치 사용
 ```
+
+### 프로젝트별 타겟 브랜치 설정
+
+각 프로젝트마다 `base_branch`를 지정하여 이슈 브랜치의 기준 브랜치와 PR 타겟 브랜치를 설정할 수 있습니다.
+
+```yaml
+projects:
+  - path: "/path/to/project"
+    base_branch: develop  # develop 브랜치에서 이슈 브랜치 생성, PR도 develop으로 머지
+```
+
+- **기본값**: `main`
+- **동작**:
+  1. 이슈 처리 시작 전 `base_branch`로 체크아웃
+  2. `base_branch`에서 `issue-forge/issue-{번호}` 브랜치 생성
+  3. PR 생성 시 `base_branch`를 타겟으로 설정
+
+### 미커밋 변경사항 자동 백업
+
+이슈 처리를 시작할 때 현재 브랜치에 커밋되지 않은 변경사항이 있으면 자동으로 백업합니다.
+
+- **백업 브랜치명**: `temp-backup-{timestamp}`
+- **커밋 메시지**: `WIP: temporary backup before issue processing`
+- **저장 위치**: 로컬 저장소에만 저장 (원격 푸시 안함)
+
+이 기능으로 작업 중인 내용이 손실되지 않도록 보호합니다.
 
 ## 알림 설정
 

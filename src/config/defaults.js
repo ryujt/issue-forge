@@ -1,5 +1,9 @@
 export const VALID_CLAUDE_MODELS = ['opus', 'sonnet', 'haiku'];
 
+export const DEFAULT_PROJECT_CONFIG = {
+  base_branch: 'main',
+};
+
 export const DEFAULT_CONFIG = {
   global: {
     polling_interval: 600,

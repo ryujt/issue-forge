@@ -17,8 +17,9 @@ async function getGitHubToken() {
 }
 
 export class GitHubClient {
-  constructor(projectPath) {
+  constructor(projectPath, options = {}) {
     this.projectPath = projectPath;
+    this.baseBranch = options.baseBranch || 'main';
     this.octokit = null;
     this.owner = null;
     this.repo = null;
@@ -146,10 +147,9 @@ export class GitHubClient {
     return { ...issue, comments };
   }
 
-  async createBranch(branchName, baseBranch = 'main') {
+  async createBranch(branchName) {
     await executeCommand('git', ['fetch', 'origin'], { cwd: this.projectPath });
 
-    // Clean up any uncommitted changes before switching branches
     await this.cleanWorkingDirectory();
 
     try {
@@ -164,7 +164,7 @@ export class GitHubClient {
       const { data: ref } = await this.octokit.git.getRef({
         owner: this.owner,
         repo: this.repo,
-        ref: `heads/${baseBranch}`,
+        ref: `heads/${this.baseBranch}`,
       });
 
       await this.octokit.git.createRef({
@@ -176,25 +176,64 @@ export class GitHubClient {
 
       await executeCommand('git', ['fetch', 'origin'], { cwd: this.projectPath });
       await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
-      logger.info(`Created and checked out branch: ${branchName}`);
+      logger.info(`Created and checked out branch: ${branchName} from ${this.baseBranch}`);
     } catch (error) {
-      // Branch might exist remotely, try checking out from remote
       await executeCommand('git', ['checkout', '-b', branchName, `origin/${branchName}`], { cwd: this.projectPath });
       logger.info(`Checked out remote branch: ${branchName}`);
     }
   }
 
-  async cleanWorkingDirectory() {
+  async hasUncommittedChanges() {
     try {
-      // First, try to checkout main branch
-      await executeCommand('git', ['checkout', 'main'], { cwd: this.projectPath });
+      const status = await executeCommand('git', ['status', '--porcelain'], { cwd: this.projectPath });
+      return status.stdout.trim().length > 0;
     } catch (error) {
-      // If checkout fails due to uncommitted changes, stash them first
+      logger.debug(`Failed to check git status: ${error.message}`);
+      return false;
+    }
+  }
+
+  async getCurrentBranch() {
+    try {
+      const result = await executeCommand('git', ['branch', '--show-current'], { cwd: this.projectPath });
+      return result.stdout.trim();
+    } catch (error) {
+      logger.debug(`Failed to get current branch: ${error.message}`);
+      return null;
+    }
+  }
+
+  async backupUncommittedChanges() {
+    const hasChanges = await this.hasUncommittedChanges();
+    if (!hasChanges) {
+      return null;
+    }
+
+    const timestamp = Date.now();
+    const backupBranchName = `temp-backup-${timestamp}`;
+
+    try {
+      await executeCommand('git', ['checkout', '-b', backupBranchName], { cwd: this.projectPath });
+      await executeCommand('git', ['add', '-A'], { cwd: this.projectPath });
+      await executeCommand('git', ['commit', '-m', 'WIP: temporary backup before issue processing'], { cwd: this.projectPath });
+      logger.info(`Backed up uncommitted changes to branch: ${backupBranchName}`);
+      return backupBranchName;
+    } catch (error) {
+      logger.warn(`Failed to backup uncommitted changes: ${error.message}`);
+      return null;
+    }
+  }
+
+  async cleanWorkingDirectory() {
+    await this.backupUncommittedChanges();
+
+    try {
+      await executeCommand('git', ['checkout', this.baseBranch], { cwd: this.projectPath });
+    } catch (error) {
       if (error.message.includes('overwritten') || error.message.includes('uncommitted')) {
-        logger.debug('Stashing uncommitted changes before branch switch');
+        logger.debug('Stashing remaining changes before branch switch');
         await executeCommand('git', ['stash', '--include-untracked'], { cwd: this.projectPath });
-        await executeCommand('git', ['checkout', 'main'], { cwd: this.projectPath });
-        // Drop the stash since we don't need these changes
+        await executeCommand('git', ['checkout', this.baseBranch], { cwd: this.projectPath });
         try {
           await executeCommand('git', ['stash', 'drop'], { cwd: this.projectPath });
         } catch (e) {
@@ -203,7 +242,6 @@ export class GitHubClient {
       }
     }
 
-    // Reset to clean state
     try {
       await executeCommand('git', ['reset', '--hard', 'HEAD'], { cwd: this.projectPath });
       await executeCommand('git', ['clean', '-fd'], { cwd: this.projectPath });
@@ -218,17 +256,17 @@ export class GitHubClient {
     await executeCommand('git', ['push', '-u', 'origin', 'HEAD'], { cwd: this.projectPath });
   }
 
-  async createPullRequest(title, body, branchName, baseBranch = 'main') {
+  async createPullRequest(title, body, branchName) {
     const { data: pr } = await this.octokit.pulls.create({
       owner: this.owner,
       repo: this.repo,
       title,
       body,
       head: branchName,
-      base: baseBranch,
+      base: this.baseBranch,
     });
 
-    logger.info(`Created PR #${pr.number}: ${pr.html_url}`);
+    logger.info(`Created PR #${pr.number} to ${this.baseBranch}: ${pr.html_url}`);
     return pr;
   }
 

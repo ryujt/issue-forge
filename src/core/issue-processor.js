@@ -11,8 +11,11 @@ export class IssueProcessor {
     this.notificationService = options.notificationService;
   }
 
-  async process(projectPath, issue) {
-    const github = new GitHubClient(projectPath);
+  async process(projectConfig, issue) {
+    const projectPath = projectConfig.path;
+    const baseBranch = projectConfig.base_branch || 'main';
+
+    const github = new GitHubClient(projectPath, { baseBranch });
     await github.initialize();
 
     const agents = createAgents(this.provider, {
@@ -20,7 +23,7 @@ export class IssueProcessor {
     });
     const branchName = `issue-forge/issue-${issue.number}`;
 
-    logger.info(`Processing issue #${issue.number}: ${issue.title}`);
+    logger.info(`Processing issue #${issue.number}: ${issue.title} (base: ${baseBranch})`);
 
     await github.addLabel(issue.number, 'issue-forge:in-progress');
     await github.createBranch(branchName);
