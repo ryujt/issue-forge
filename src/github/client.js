@@ -178,8 +178,34 @@ export class GitHubClient {
       await executeCommand('git', ['checkout', branchName], { cwd: this.projectPath });
       logger.info(`Created and checked out branch: ${branchName} from ${this.baseBranch}`);
     } catch (error) {
-      await executeCommand('git', ['checkout', '-b', branchName, `origin/${branchName}`], { cwd: this.projectPath });
-      logger.info(`Checked out remote branch: ${branchName}`);
+      // GitHub API failed, fall back to creating local branch from baseBranch
+      logger.debug(`GitHub API branch creation failed: ${error.message}, falling back to local branch creation`);
+
+      try {
+        // Try to checkout and update the base branch
+        await executeCommand('git', ['checkout', this.baseBranch], { cwd: this.projectPath });
+        try {
+          await executeCommand('git', ['pull', 'origin', this.baseBranch], { cwd: this.projectPath });
+        } catch (pullError) {
+          logger.debug(`Failed to pull ${this.baseBranch}, continuing with local state: ${pullError.message}`);
+        }
+        await executeCommand('git', ['checkout', '-b', branchName], { cwd: this.projectPath });
+        logger.info(`Created local branch: ${branchName} from ${this.baseBranch}`);
+      } catch (localError) {
+        // Base branch doesn't exist locally, try to fetch and track it
+        logger.debug(`Local checkout of ${this.baseBranch} failed: ${localError.message}, trying to track remote`);
+        try {
+          await executeCommand('git', ['fetch', 'origin', this.baseBranch], { cwd: this.projectPath });
+          await executeCommand('git', ['checkout', '-b', this.baseBranch, `origin/${this.baseBranch}`], { cwd: this.projectPath });
+          await executeCommand('git', ['checkout', '-b', branchName], { cwd: this.projectPath });
+          logger.info(`Created local branch: ${branchName} from tracked ${this.baseBranch}`);
+        } catch (trackError) {
+          // Last resort: create branch from current HEAD
+          logger.debug(`Cannot track ${this.baseBranch}: ${trackError.message}, creating from HEAD`);
+          await executeCommand('git', ['checkout', '-b', branchName], { cwd: this.projectPath });
+          logger.info(`Created local branch: ${branchName} from current HEAD`);
+        }
+      }
     }
   }
 
@@ -233,12 +259,28 @@ export class GitHubClient {
       if (error.message.includes('overwritten') || error.message.includes('uncommitted')) {
         logger.debug('Stashing remaining changes before branch switch');
         await executeCommand('git', ['stash', '--include-untracked'], { cwd: this.projectPath });
-        await executeCommand('git', ['checkout', this.baseBranch], { cwd: this.projectPath });
+        try {
+          await executeCommand('git', ['checkout', this.baseBranch], { cwd: this.projectPath });
+        } catch (stashCheckoutError) {
+          logger.debug(`Cannot checkout ${this.baseBranch} after stash: ${stashCheckoutError.message}`);
+        }
         try {
           await executeCommand('git', ['stash', 'drop'], { cwd: this.projectPath });
         } catch (e) {
           // Ignore if stash is empty
         }
+      } else if (error.message.includes('did not match') || error.message.includes('not a commit')) {
+        // baseBranch doesn't exist, try to fetch and track it
+        logger.debug(`Branch ${this.baseBranch} not found locally, trying to track from origin`);
+        try {
+          await executeCommand('git', ['fetch', 'origin', this.baseBranch], { cwd: this.projectPath });
+          await executeCommand('git', ['checkout', '-b', this.baseBranch, `origin/${this.baseBranch}`], { cwd: this.projectPath });
+        } catch (trackError) {
+          // Cannot track, just stay on current branch and clean
+          logger.debug(`Cannot track ${this.baseBranch}: ${trackError.message}, staying on current branch`);
+        }
+      } else {
+        logger.debug(`Cannot checkout ${this.baseBranch}: ${error.message}, staying on current branch`);
       }
     }
 
