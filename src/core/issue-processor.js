@@ -148,14 +148,14 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
 ---
 *Automated by Issue Forge*`;
 
-    await github.commitAndPush(`fix: resolve issue #${issue.number}`);
-    const pr = await github.createPullRequest(title, body, branchName);
-    await github.removeLabel(issue.number, 'issue-forge:in-progress');
-
     await memory.addFinalSummary({
       iterations: memory.currentIteration,
       result: 'APPROVED - PR Created',
     });
+
+    await github.commitAndPush(`fix: resolve issue #${issue.number}`);
+    const pr = await github.createPullRequest(title, body, branchName);
+    await github.removeLabel(issue.number, 'issue-forge:in-progress');
 
     if (this.notificationService) {
       await this.notificationService.notifyAnalysisComplete({
