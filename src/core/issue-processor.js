@@ -148,14 +148,14 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
 ---
 *Automated by Issue Forge*`;
 
-    await github.commitAndPush(`fix: resolve issue #${issue.number}`);
-    const pr = await github.createPullRequest(title, body, branchName);
-    await github.removeLabel(issue.number, 'issue-forge:in-progress');
-
     await memory.addFinalSummary({
       iterations: memory.currentIteration,
       result: 'APPROVED - PR Created',
     });
+
+    await github.commitAndPush(`fix: resolve issue #${issue.number}`);
+    const pr = await github.createPullRequest(title, body, branchName);
+    await github.removeLabel(issue.number, 'issue-forge:in-progress');
 
     if (this.notificationService) {
       await this.notificationService.notifyAnalysisComplete({
@@ -176,6 +176,13 @@ The full agent collaboration log is available in \`.issue-forge/issue-${issue.nu
   }
 
   async escalateToHuman(github, issue, memory) {
+    await memory.addFinalSummary({
+      iterations: memory.currentIteration,
+      result: 'ESCALATED - Human intervention required',
+    });
+
+    await github.commitAndPush(`docs: issue #${issue.number} escalated - needs human intervention`);
+
     const comment = `## Issue Forge - Escalation Required
 
 After ${this.maxIterations} attempts, Issue Forge was unable to fully resolve this issue automatically.
@@ -188,11 +195,6 @@ Please review the agent collaboration log in \`.issue-forge/issue-${issue.number
     await github.addIssueComment(issue.number, comment);
     await github.removeLabel(issue.number, 'issue-forge:in-progress');
     await github.addLabel(issue.number, 'issue-forge:needs-human');
-
-    await memory.addFinalSummary({
-      iterations: memory.currentIteration,
-      result: 'ESCALATED - Human intervention required',
-    });
 
     if (this.notificationService) {
       await this.notificationService.notifyAnalysisComplete({
