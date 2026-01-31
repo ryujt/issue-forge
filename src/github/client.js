@@ -214,6 +214,15 @@ export class GitHubClient {
 
   async commitAndPush(message) {
     await executeCommand('git', ['add', '-A'], { cwd: this.projectPath });
+
+    try {
+      await executeCommand('git', ['diff', '--cached', '--quiet'], { cwd: this.projectPath });
+      logger.debug('No changes to commit');
+      return;
+    } catch (error) {
+      // Exit code 1 means there are staged changes - proceed with commit
+    }
+
     await executeCommand('git', ['commit', '-m', message], { cwd: this.projectPath });
     await executeCommand('git', ['push', '-u', 'origin', 'HEAD'], { cwd: this.projectPath });
   }
