@@ -36,3 +36,4 @@ notifications:
 
 projects:
   - path: "/path/to/your/project"
+    # base_branch: main       # Target branch for issue branches and PRs (default: main)

@@ -5,3 +5,4 @@ logs/
 .env
 .DS_Store
 config.yaml
+.omc/

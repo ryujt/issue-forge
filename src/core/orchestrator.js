@@ -39,16 +39,18 @@ export class Orchestrator {
   async initializeProjects() {
     for (const project of this.config.projects) {
       try {
-        const github = new GitHubClient(project.path);
+        const baseBranch = project.base_branch || 'main';
+        const github = new GitHubClient(project.path, { baseBranch });
         await github.initialize();
 
         this.projectStates.set(project.path, {
           github,
+          project,
           lastProcessedIssue: null,
           processedIssues: new Set(),
         });
 
-        logger.info(`Initialized project: ${project.path}`);
+        logger.info(`Initialized project: ${project.path} (base: ${baseBranch})`);
       } catch (error) {
         logger.error(`Failed to initialize project ${project.path}: ${error.message}`);
       }
@@ -173,7 +175,7 @@ export class Orchestrator {
     logger.info(`Processing issue #${unprocessedIssue.number}: ${unprocessedIssue.title}`);
 
     try {
-      const result = await this.processor.process(projectPath, unprocessedIssue);
+      const result = await this.processor.process(state.project, unprocessedIssue);
 
       state.processedIssues.add(unprocessedIssue.number);
       state.lastProcessedIssue = unprocessedIssue.number;

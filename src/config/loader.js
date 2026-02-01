@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { DEFAULT_CONFIG, VALID_CLAUDE_MODELS } from './defaults.js';
+import { DEFAULT_CONFIG, DEFAULT_PROJECT_CONFIG, VALID_CLAUDE_MODELS } from './defaults.js';
 
 const CONFIG_NAMES = ['config.yaml', 'config.yml', '.issue-forge.yaml', '.issue-forge.yml'];
 
@@ -56,6 +56,11 @@ export async function loadConfig(configPath) {
   const content = await readFile(filePath, 'utf-8');
   const userConfig = parseYaml(content);
 
+  const projects = (userConfig.projects || []).map(project => ({
+    ...DEFAULT_PROJECT_CONFIG,
+    ...project,
+  }));
+
   const config = {
     global: {
       ...DEFAULT_CONFIG.global,
@@ -64,7 +69,7 @@ export async function loadConfig(configPath) {
     },
     logging: getLoggingConfig(userConfig),
     notifications: getNotificationConfig(userConfig),
-    projects: userConfig.projects || [],
+    projects,
   };
 
   validateConfig(config);
