@@ -33,6 +33,8 @@ export class GitHubClient {
     const parsed = this.parseGitHubUrl(remote);
     this.owner = parsed.owner;
     this.repo = parsed.repo;
+
+    await this.octokit.repos.get({ owner: this.owner, repo: this.repo });
     logger.debug(`GitHub client initialized for ${this.owner}/${this.repo}`);
   }
 

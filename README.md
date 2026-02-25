@@ -70,6 +70,7 @@ issue-forge init
 global:
   polling_interval: 600  # 이슈 없을 때 대기 시간 (초)
   ai_provider: claude    # claude 또는 gemini
+  github_account: ryujt  # gh 계정 자동 전환
 
 logging:
   level: debug
@@ -144,6 +145,19 @@ projects:
   - path: "/Users/ryu/projects/personal/my-app"
     # base_branch 미지정 → folders의 develop이 적용됨
 ```
+
+### GitHub 계정 자동 전환
+
+`gh` CLI에 여러 계정이 로그인되어 있을 때, 매 사이클 시작 전에 올바른 계정으로 자동 전환합니다.
+
+```yaml
+global:
+  github_account: ryujt  # gh auth switch --user ryujt
+```
+
+- 설정하지 않으면 현재 활성 계정을 그대로 사용
+- 이미 해당 계정이 활성 상태면 전환 생략
+- 초기화 시 GitHub API에 접근할 수 없는 저장소는 자동으로 건너뜀
 
 ### 미커밋 변경사항 자동 백업
 

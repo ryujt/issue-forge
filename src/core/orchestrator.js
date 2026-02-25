@@ -3,7 +3,7 @@ import { IssueProcessor } from './issue-processor.js';
 import { createProvider } from '../providers/index.js';
 import { NotificationService } from '../services/notification-service.js';
 import { logger } from '../utils/logger.js';
-import { sleep, RateLimitError, waitForRateLimit } from '../utils/process.js';
+import { sleep, RateLimitError, waitForRateLimit, executeCommand } from '../utils/process.js';
 import { TimeScheduler } from '../utils/time-scheduler.js';
 
 export class Orchestrator {
@@ -27,6 +27,7 @@ export class Orchestrator {
     logger.info(`Monitoring ${this.config.projects.length} project(s)`);
     logger.info(`AI Provider: ${this.config.global.ai_provider} (model: ${this.config.global.model})`);
 
+    await this.ensureGitHubAccount();
     await this.initializeProjects();
     await this.runLoop();
   }
@@ -57,10 +58,35 @@ export class Orchestrator {
     }
   }
 
+  async ensureGitHubAccount() {
+    const account = this.config.global.github_account;
+    if (!account) return;
+
+    try {
+      const result = await executeCommand('gh', ['auth', 'status']);
+      const output = result.stdout + result.stderr;
+
+      const activeMatch = output.match(/Logged in to github\.com account (\S+).*\n\s*-\s*Active account:\s*true/);
+      const activeAccount = activeMatch?.[1];
+
+      if (activeAccount === account) {
+        logger.debug(`GitHub account already active: ${account}`);
+        return;
+      }
+
+      await executeCommand('gh', ['auth', 'switch', '--user', account]);
+      logger.info(`Switched GitHub account to: ${account}`);
+    } catch (error) {
+      logger.warn(`Failed to switch GitHub account to ${account}: ${error.message}`);
+    }
+  }
+
   async runLoop() {
     const errorRetryInterval = 30; // Retry after 30s when errors occur
 
     while (this.running) {
+      await this.ensureGitHubAccount();
+
       let hasProcessedAny = false;
       let hasErrors = false;
 

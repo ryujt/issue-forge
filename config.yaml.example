@@ -5,6 +5,7 @@ global:
   ai_provider: claude    # claude or gemini
   model: opus            # opus (4.5), sonnet (4), or haiku (3.5)
   max_iterations: 3      # Max retry attempts per issue
+  # github_account: your_username  # Auto-switch gh account before each cycle
 
 # Logging Configuration
 # Can also be set via environment variables:
