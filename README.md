@@ -82,12 +82,33 @@ notifications:
   provider: slack  # Options: slack, telegram, none
   # webhookUrl: "https://hooks.slack.com/services/..."  # Optional: Can use env var instead
 
+folders:
+  - path: "/Users/ryu/projects/lib"
+  - path: "/Users/ryu/projects/personal"
+  - path: "/Users/ryu/projects/mediawave"
+
 projects:
-  - path: "/Users/ryu/projects/project-a"
-    base_branch: develop  # 이슈 브랜치 생성 및 PR 타겟 브랜치 (기본값: main)
-  - path: "/Users/ryu/projects/project-b"
-    # base_branch 생략 시 main 브랜치 사용
+  - path: "/Users/ryu/projects/personal/issue-forge"
+    base_branch: proto  # 개별 저장소 오버라이드
+  - path: "/Users/ryu/projects/mediawave/himytv"
+    base_branch: proto
 ```
+
+### 폴더 기반 프로젝트 자동 발견
+
+`folders` 설정을 사용하면 여러 저장소를 일일이 지정하지 않고 한 번에 등록할 수 있습니다.
+
+```yaml
+folders:
+  - path: "/Users/ryu/projects/lib"           # 이 폴더 아래의 모든 git 저장소를 자동 등록
+  - path: "/Users/ryu/projects/personal"
+    base_branch: develop                       # 폴더 내 모든 저장소에 기본 브랜치 적용
+```
+
+- 지정한 폴더의 **바로 아래 하위 디렉토리**만 검색 (재귀 탐색 안함)
+- `.git` 디렉토리가 있는 폴더만 저장소로 인식
+- git 저장소가 아닌 폴더는 자동으로 무시
+- 폴더 레벨에서 `base_branch`를 지정하면 해당 폴더 내 모든 저장소에 적용
 
 ### 프로젝트별 타겟 브랜치 설정
 
@@ -104,6 +125,25 @@ projects:
   1. 이슈 처리 시작 전 `base_branch`로 체크아웃
   2. `base_branch`에서 `issue-forge/issue-{번호}` 브랜치 생성
   3. PR 생성 시 `base_branch`를 타겟으로 설정
+
+### folders와 projects 병합 규칙
+
+동일한 저장소가 `folders`와 `projects` 양쪽에 존재할 경우:
+
+1. `folders` 설정이 기본(base)이 됩니다
+2. `projects`에 명시한 설정이 그 위에 오버라이드됩니다
+
+```yaml
+folders:
+  - path: "/Users/ryu/projects/personal"
+    base_branch: develop           # 폴더 기본: develop
+
+projects:
+  - path: "/Users/ryu/projects/personal/issue-forge"
+    base_branch: proto             # 이 저장소만 proto로 오버라이드
+  - path: "/Users/ryu/projects/personal/my-app"
+    # base_branch 미지정 → folders의 develop이 적용됨
+```
 
 ### 미커밋 변경사항 자동 백업
 

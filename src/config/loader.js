@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { parse as parseYaml } from 'yaml';
@@ -46,6 +46,42 @@ function getNotificationConfig(userConfig) {
   };
 }
 
+async function discoverFolderProjects(folders) {
+  const discovered = [];
+
+  for (const folder of folders) {
+    if (!folder.path) continue;
+
+    const folderPath = resolve(folder.path);
+    if (!existsSync(folderPath)) continue;
+
+    let entries;
+    try {
+      entries = await readdir(folderPath, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const subPath = resolve(folderPath, entry.name);
+      const gitDir = resolve(subPath, '.git');
+
+      if (!existsSync(gitDir)) continue;
+
+      const project = { path: subPath };
+      if (folder.base_branch) {
+        project.base_branch = folder.base_branch;
+      }
+
+      discovered.push(project);
+    }
+  }
+
+  return discovered;
+}
+
 export async function loadConfig(configPath) {
   const filePath = configPath || await findConfigFile();
 
@@ -56,10 +92,38 @@ export async function loadConfig(configPath) {
   const content = await readFile(filePath, 'utf-8');
   const userConfig = parseYaml(content);
 
-  const projects = (userConfig.projects || []).map(project => ({
-    ...DEFAULT_PROJECT_CONFIG,
-    ...project,
-  }));
+  const explicitProjectsRaw = userConfig.projects || [];
+  const folderProjects = await discoverFolderProjects(userConfig.folders || []);
+
+  const folderByPath = new Map(folderProjects.map(p => [resolve(p.path), p]));
+  const explicitByPath = new Map(explicitProjectsRaw.map(p => [resolve(p.path), p]));
+
+  const mergedProjects = [];
+  const seen = new Set();
+
+  for (const explicit of explicitProjectsRaw) {
+    const resolvedPath = resolve(explicit.path);
+    const folderBase = folderByPath.get(resolvedPath);
+    seen.add(resolvedPath);
+
+    mergedProjects.push({
+      ...DEFAULT_PROJECT_CONFIG,
+      ...(folderBase || {}),
+      ...explicit,
+    });
+  }
+
+  for (const folder of folderProjects) {
+    const resolvedPath = resolve(folder.path);
+    if (seen.has(resolvedPath)) continue;
+
+    mergedProjects.push({
+      ...DEFAULT_PROJECT_CONFIG,
+      ...folder,
+    });
+  }
+
+  const projects = mergedProjects;
 
   const config = {
     global: {

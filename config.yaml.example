@@ -34,6 +34,19 @@ notifications:
   # botToken: "your_bot_token"  # Get from @BotFather
   # chatId: "your_chat_id"      # Get by: 1) Message your bot, 2) curl https://api.telegram.org/bot<TOKEN>/getUpdates
 
+# Folder-based project discovery
+# Scans immediate subdirectories of each folder for git repositories.
+# Non-git directories are ignored.
+folders:
+  - path: "/path/to/your/projects"
+    # base_branch: main       # Default base branch for all repos in this folder
+  # - path: "/path/to/other/projects"
+  #   base_branch: develop
+
+# Explicit project configuration
+# Use this for per-repo overrides (e.g. base_branch).
+# If a repo appears in both folders and projects, folder config is the base
+# and project config overrides on top.
 projects:
   - path: "/path/to/your/project"
     # base_branch: main       # Target branch for issue branches and PRs (default: main)
